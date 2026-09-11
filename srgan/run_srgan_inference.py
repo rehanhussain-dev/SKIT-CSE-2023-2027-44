@@ -34,6 +34,8 @@ Assumptions / things to verify before trusting the output
 
 import os
 import sys
+import csv
+from pathlib import Path
 import numpy as np
 import rasterio
 
@@ -63,6 +65,9 @@ OVERLAP = 12
 ELIMINATE_BORDER_PX = 2
 
 DEVICE = "cuda"  # Colab GPU runtime required (Runtime > Change runtime type > GPU)
+
+EXPECTED_BANDS = 4
+EXPECTED_PATCH_SIZE = (128, 128)
 
 
 # --------------------------------------------------------------------------
@@ -100,6 +105,104 @@ def inspect_geotiff(path):
             print("  NOTE: values already look like 0-1 reflectance. "
                   "Set SCALE_FACTOR = 1.0 before running inference.")
     return
+
+
+# --------------------------------------------------------------------------
+# 2b. Review patches for training suitability
+# --------------------------------------------------------------------------
+def review_geotiff(path, expected_size=EXPECTED_PATCH_SIZE):
+    """Return a reproducible suitability review for one GeoTIFF patch."""
+    issues = []
+    warnings = []
+
+    with rasterio.open(path) as src:
+        data = src.read()
+        nodata_mask = src.dataset_mask() == 0
+
+        if src.count != EXPECTED_BANDS:
+            issues.append(f"expected {EXPECTED_BANDS} bands, found {src.count}")
+        if (src.width, src.height) != expected_size:
+            issues.append(
+                f"expected {expected_size[0]}x{expected_size[1]}, "
+                f"found {src.width}x{src.height}"
+            )
+        if src.crs is None:
+            issues.append("missing CRS")
+        if not np.isfinite(data).all():
+            issues.append("contains non-finite values")
+
+        total_pixels = data.shape[1] * data.shape[2]
+        empty_fraction = float(nodata_mask.sum() / total_pixels)
+        if empty_fraction > 0:
+            warnings.append(f"nodata coverage {empty_fraction:.1%}")
+        if empty_fraction >= 0.25:
+            issues.append("at least 25% of pixels are nodata")
+
+        if data.size and np.isfinite(data).all():
+            saturated_fraction = float((data >= np.iinfo(data.dtype).max).mean()) \
+                if np.issubdtype(data.dtype, np.integer) else 0.0
+            if saturated_fraction > 0:
+                warnings.append(f"saturated pixels {saturated_fraction:.1%}")
+
+            if np.all(data == 0):
+                issues.append("all pixel values are zero")
+
+        result = "SUITABLE" if not issues else "REVIEW"
+        return {
+            "file": str(path),
+            "result": result,
+            "bands": src.count,
+            "width": src.width,
+            "height": src.height,
+            "crs": str(src.crs) if src.crs else "",
+            "dtype": src.dtypes[0],
+            "min": float(np.nanmin(data)) if data.size else "",
+            "max": float(np.nanmax(data)) if data.size else "",
+            "nodata_fraction": round(empty_fraction, 6),
+            "issues": "; ".join(issues),
+            "warnings": "; ".join(warnings),
+        }
+
+
+def review_patch_directory(input_dir, report_path):
+    """Review GeoTIFF patches in a directory and write a CSV report."""
+    paths = sorted(
+        path for path in Path(input_dir).iterdir()
+        if path.is_file() and path.suffix.lower() in {".tif", ".tiff"}
+    )
+    if not paths:
+        raise FileNotFoundError(f"No GeoTIFF patches found in {input_dir}")
+
+    rows = []
+    for path in paths:
+        try:
+            rows.append(review_geotiff(path))
+        except Exception as error:
+            rows.append({
+                "file": str(path),
+                "result": "REVIEW",
+                "bands": "",
+                "width": "",
+                "height": "",
+                "crs": "",
+                "dtype": "",
+                "min": "",
+                "max": "",
+                "nodata_fraction": "",
+                "issues": f"could not read GeoTIFF: {error}",
+                "warnings": "",
+            })
+
+    fieldnames = list(rows[0])
+    with open(report_path, "w", newline="", encoding="utf-8") as report_file:
+        writer = csv.DictWriter(report_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    suitable = sum(row["result"] == "SUITABLE" for row in rows)
+    print(f"Reviewed {len(rows)} patches: {suitable} suitable, "
+          f"{len(rows) - suitable} require review.")
+    print(f"Report written to {report_path}")
 
 
 # --------------------------------------------------------------------------
@@ -181,6 +284,17 @@ def run_inference_manual(input_tif, output_tif):
 # 5. Main
 # --------------------------------------------------------------------------
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--review":
+        if len(sys.argv) < 3:
+            raise SystemExit(
+                "Usage: python run_srgan_inference.py --review "
+                "PATCH_DIRECTORY [REPORT.csv]"
+            )
+        patch_directory = sys.argv[2]
+        report_path = sys.argv[3] if len(sys.argv) > 3 else "patch_review_report.csv"
+        review_patch_directory(patch_directory, report_path)
+        raise SystemExit(0)
+
     if len(sys.argv) > 1:
         INPUT_TIF = sys.argv[1]
 

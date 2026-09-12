@@ -1,0 +1,38 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Large Datasets & Spatial Rasters 
+data/
+*.tif
+*.tiff
+*.geotiff
+*.h5
+*.nc
+*.geojson
+*.shp
+*.shx
+*.dbf
+*.prj
+
+# PyTorch Weights & Checkpoints
+*.pt
+*.pth
+*.onnx
+*.pkl
+
+# Databases & Local Configurations
+*.sqlite3
+.env
+local_settings.py
+
+# IDE / Operating System
+.DS_Store
+.idea/
+.vscode/

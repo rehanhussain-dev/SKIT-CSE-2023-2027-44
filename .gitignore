@@ -13,7 +13,9 @@ __pycache__/
 env/
 venv/
 .venv/
-
+temp/
+form1 and form2.docx
+form1 and form2.md
 # Large Datasets & Spatial Rasters 
 data/
 *.tif

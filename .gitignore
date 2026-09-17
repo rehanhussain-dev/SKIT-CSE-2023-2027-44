@@ -44,3 +44,6 @@ local_settings.py
 .DS_Store
 .idea/
 .vscode/
+
+token.json
+credentials.json

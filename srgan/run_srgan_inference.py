@@ -32,8 +32,8 @@ Assumptions / things to verify before trusting the output
   own export's native range using the inspection step first).
 """
 
+import argparse
 import os
-import sys
 import numpy as np
 import rasterio
 
@@ -41,7 +41,8 @@ import rasterio
 # 0. CONFIG -- edit these for your run
 # --------------------------------------------------------------------------
 
-# Path to your GEE-exported GeoTIFF (4-band Red-Green-Blue-NIR, 10m).
+# Path to your GEE-exported GeoTIFF. The GEE pipeline exports eight bands;
+# the model receives Red, Green, Blue, NIR from that file.
 INPUT_TIF = "/content/drive/MyDrive/farm_patches/field_01.tif"
 
 # Where to write the super-resolved output. Defaults to INPUT_TIF with
@@ -63,13 +64,20 @@ OVERLAP = 12
 ELIMINATE_BORDER_PX = 2
 
 DEVICE = "cuda"  # Colab GPU runtime required (Runtime > Change runtime type > GPU)
+MODEL_BAND_INDICES = (2, 1, 0, 3)  # B4, B3, B2, B8 in the GEE export order.
 
 
 # --------------------------------------------------------------------------
 # 1. Install dependencies (Colab-safe: skips if already installed)
 # --------------------------------------------------------------------------
 def install_dependencies():
-    os.system(f"{sys.executable} -m pip install -q opensr_srgan opensr-utils rasterio")
+    """Install optional runtime dependencies when explicitly requested."""
+    import subprocess
+    import sys
+
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "-r", os.path.join(os.path.dirname(__file__), "requirements-srgan.txt")]
+    )
 
 
 # --------------------------------------------------------------------------
@@ -77,9 +85,8 @@ def install_dependencies():
 # --------------------------------------------------------------------------
 def inspect_geotiff(path):
     """
-    Prints band count, dtype, value range, and CRS so you can confirm the
-    file matches what the model expects (4 bands, R-G-B-NIR order,
-    reflectance-like value range) BEFORE burning GPU time on a bad input.
+    Prints band count, dtype, value range, CRS, and the bands selected for the
+    model BEFORE burning GPU time on a bad input.
     """
     with rasterio.open(path) as src:
         print(f"File: {path}")
@@ -97,6 +104,11 @@ def inspect_geotiff(path):
                 f"  WARNING: expected 4 bands (R,G,B,NIR), found {src.count}. "
                 f"Re-export from GEE with the correct band selection/order."
             )
+        if src.count < 4:
+            raise ValueError(f"Expected at least 4 bands, found {src.count}")
+        if max(MODEL_BAND_INDICES) >= src.count:
+            raise ValueError("The input does not contain the required RGB-NIR bands")
+        print(f"  Model bands: {MODEL_BAND_INDICES} (R,G,B,NIR)")
         if data.max() > 20:
             print(
                 "  NOTE: values look like raw digital numbers (>20), "
@@ -110,13 +122,27 @@ def inspect_geotiff(path):
     return
 
 
+def load_model(device):
+    """Load the pretrained four-band RGB-NIR model."""
+    import torch
+    from opensr_srgan import load_inference_model
+
+    return load_inference_model("RGB-NIR").to(device).eval()
+
+
+def read_model_input(src):
+    """Read and normalize the GEE band layout into R-G-B-NIR tensors."""
+    arr = src.read(MODEL_BAND_INDICES).astype(np.float32)
+    if np.nanmax(arr) > 20:
+        arr /= SCALE_FACTOR
+    return np.clip(np.nan_to_num(arr, nan=0.0), 0, 1)
+
+
 # --------------------------------------------------------------------------
 # 3. Run inference using opensr-utils (handles tiling, blending, georeferencing)
 # --------------------------------------------------------------------------
 def run_inference(input_tif, output_tif):
     import torch
-    from opensr_srgan import load_inference_model
-    import opensr_utils
 
     device = DEVICE if torch.cuda.is_available() else "cpu"
     if device == "cpu":
@@ -126,22 +152,36 @@ def run_inference(input_tif, output_tif):
         )
 
     print("Loading pretrained RGB-NIR SRGAN model...")
-    model = load_inference_model("RGB-NIR").to(device)
+    model = load_model(device)
 
-    print(f"Running SR over {input_tif} ...")
-    opensr_utils.large_file_processing(
-        root=input_tif,
-        model=model,
-        window_size=WINDOW_SIZE,
-        factor=FACTOR,
-        overlap=OVERLAP,
-        eliminate_border_px=ELIMINATE_BORDER_PX,
-        device=device,
+    with rasterio.open(input_tif) as src:
+        source_profile = src.profile.copy()
+        source_transform = src.transform
+        source_height, source_width = src.height, src.width
+        arr = read_model_input(src)
+
+    lr = torch.from_numpy(arr).unsqueeze(0).to(device)
+    with torch.inference_mode():
+        sr = model.predict_step(lr)
+    sr_np = sr.squeeze(0).detach().cpu().numpy()
+
+    output_profile = source_profile.copy()
+    output_profile.update(
+        count=sr_np.shape[0],
+        dtype="float32",
+        height=sr_np.shape[1],
+        width=sr_np.shape[2],
+        transform=source_transform * source_transform.scale(
+            source_width / sr_np.shape[2], source_height / sr_np.shape[1]
+        ),
     )
     print(
         f"Done. Super-resolved output should be written alongside the input "
         f"(check opensr-utils console output above for the exact path)."
     )
+    with rasterio.open(output_tif, "w", **output_profile) as dst:
+        dst.write(np.clip(sr_np, 0, 1).astype(np.float32))
+    print(f"Wrote super-resolved GeoTIFF to {output_tif}")
 
 
 # --------------------------------------------------------------------------
@@ -151,18 +191,13 @@ def run_inference(input_tif, output_tif):
 # --------------------------------------------------------------------------
 def run_inference_manual(input_tif, output_tif):
     import torch
-    from opensr_srgan import load_inference_model
 
     device = DEVICE if torch.cuda.is_available() else "cpu"
-    model = load_inference_model("RGB-NIR").to(device).eval()
+    model = load_model(device)
 
     with rasterio.open(input_tif) as src:
         profile = src.profile
-        arr = src.read().astype(np.float32) / SCALE_FACTOR  # (bands, H, W)
-        arr = np.clip(arr, 0, 1)
-
-    # Reorder bands here if your GEE export is not already R,G,B,NIR, e.g.:
-    # arr = arr[[2, 1, 0, 3], :, :]  # example: swap from B,G,R,NIR to R,G,B,NIR
+        arr = read_model_input(src)
 
     lr = torch.from_numpy(arr).unsqueeze(0).to(device)  # (1, 4, H, W)
 
@@ -193,15 +228,26 @@ def run_inference_manual(input_tif, output_tif):
 # --------------------------------------------------------------------------
 # 5. Main
 # --------------------------------------------------------------------------
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        INPUT_TIF = sys.argv[1]
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("input_tif", nargs="?", default=INPUT_TIF)
+    parser.add_argument("--output", dest="output_tif")
+    parser.add_argument(
+        "--install", action="store_true", help="Install requirements-srgan.txt before inference"
+    )
+    return parser.parse_args()
 
+
+if __name__ == "__main__":
+    args = parse_args()
+    INPUT_TIF = args.input_tif
+    OUTPUT_TIF = args.output_tif
     if OUTPUT_TIF is None:
         base, ext = os.path.splitext(INPUT_TIF)
         OUTPUT_TIF = f"{base}_SR{ext}"
 
-    install_dependencies()
+    if args.install:
+        install_dependencies()
 
     print("=" * 60)
     print("STEP 1: Inspecting input GeoTIFF")
@@ -211,8 +257,4 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("STEP 2: Running SRGAN inference")
     print("=" * 60)
-    try:
-        run_inference(INPUT_TIF, OUTPUT_TIF)
-    except Exception as e:
-        print(f"opensr-utils path failed ({e}); falling back to manual inference.")
-        run_inference_manual(INPUT_TIF, OUTPUT_TIF)
+    run_inference(INPUT_TIF, OUTPUT_TIF)

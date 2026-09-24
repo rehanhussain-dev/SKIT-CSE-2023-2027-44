@@ -90,8 +90,13 @@ function FieldMap() {
   };
 
   const handleClearAll = () => {
-    drawnItemsRef.current.clearLayers();
-    setFieldCount(0);
+    if(fieldCount==0) return;
+    const confirmClear = window.confirm('Are you sure you want to clear all fields?');
+    if(confirmClear){
+       drawnItemsRef.current.clearLayers();
+      setFieldCount(0);
+    }
+   
   };
 
   return (

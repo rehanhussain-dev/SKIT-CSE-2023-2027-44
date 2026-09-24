@@ -88,17 +88,25 @@ def inspect_geotiff(path):
         print(f"  CRS        : {src.crs}")
         print(f"  Size       : {src.width} x {src.height}")
         data = src.read()
-        print(f"  Value range: min={data.min()}, max={data.max()}, mean={data.mean():.2f}")
+        print(
+            f"  Value range: min={data.min()}, max={data.max()}, mean={data.mean():.2f}"
+        )
 
         if src.count != 4:
-            print(f"  WARNING: expected 4 bands (R,G,B,NIR), found {src.count}. "
-                  f"Re-export from GEE with the correct band selection/order.")
+            print(
+                f"  WARNING: expected 4 bands (R,G,B,NIR), found {src.count}. "
+                f"Re-export from GEE with the correct band selection/order."
+            )
         if data.max() > 20:
-            print("  NOTE: values look like raw digital numbers (>20), "
-                  "SCALE_FACTOR=10000 is probably correct.")
+            print(
+                "  NOTE: values look like raw digital numbers (>20), "
+                "SCALE_FACTOR=10000 is probably correct."
+            )
         else:
-            print("  NOTE: values already look like 0-1 reflectance. "
-                  "Set SCALE_FACTOR = 1.0 before running inference.")
+            print(
+                "  NOTE: values already look like 0-1 reflectance. "
+                "Set SCALE_FACTOR = 1.0 before running inference."
+            )
     return
 
 
@@ -112,8 +120,10 @@ def run_inference(input_tif, output_tif):
 
     device = DEVICE if torch.cuda.is_available() else "cpu"
     if device == "cpu":
-        print("WARNING: no GPU detected. This will be slow. "
-              "In Colab: Runtime > Change runtime type > GPU.")
+        print(
+            "WARNING: no GPU detected. This will be slow. "
+            "In Colab: Runtime > Change runtime type > GPU."
+        )
 
     print("Loading pretrained RGB-NIR SRGAN model...")
     model = load_inference_model("RGB-NIR").to(device)
@@ -128,8 +138,10 @@ def run_inference(input_tif, output_tif):
         eliminate_border_px=ELIMINATE_BORDER_PX,
         device=device,
     )
-    print(f"Done. Super-resolved output should be written alongside the input "
-          f"(check opensr-utils console output above for the exact path).")
+    print(
+        f"Done. Super-resolved output should be written alongside the input "
+        f"(check opensr-utils console output above for the exact path)."
+    )
 
 
 # --------------------------------------------------------------------------
@@ -165,7 +177,8 @@ def run_inference_manual(input_tif, output_tif):
         width=sr_np.shape[2],
         count=sr_np.shape[0],
         dtype="float32",
-        transform=profile["transform"] * profile["transform"].scale(
+        transform=profile["transform"]
+        * profile["transform"].scale(
             profile["width"] / sr_np.shape[2],
             profile["height"] / sr_np.shape[1],
         ),

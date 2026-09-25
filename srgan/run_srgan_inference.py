@@ -64,7 +64,7 @@ OVERLAP = 12
 ELIMINATE_BORDER_PX = 2
 
 DEVICE = "cuda"  # Colab GPU runtime required (Runtime > Change runtime type > GPU)
-MODEL_BAND_INDICES = (2, 1, 0, 3)  # B4, B3, B2, B8 in the GEE export order.
+MODEL_BAND_INDICES = (3, 2, 1, 4)  # 1-based Rasterio indexes: B4, B3, B2, B8.
 
 
 # --------------------------------------------------------------------------
@@ -106,7 +106,7 @@ def inspect_geotiff(path):
             )
         if src.count < 4:
             raise ValueError(f"Expected at least 4 bands, found {src.count}")
-        if max(MODEL_BAND_INDICES) >= src.count:
+        if max(MODEL_BAND_INDICES) > src.count:
             raise ValueError("The input does not contain the required RGB-NIR bands")
         print(f"  Model bands: {MODEL_BAND_INDICES} (R,G,B,NIR)")
         if data.max() > 20:

@@ -4,11 +4,19 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except ImportError:  # pragma: no cover - optional dependency for CLI execution
+    rasterio = None
 
 
 def review_patch(path, expected_size=128, expected_bands=8):
     """Return validation issues and summary metadata for one GeoTIFF."""
+    if rasterio is None:
+        raise RuntimeError(
+            "rasterio is required to review GeoTIFF patches. Install the SRGAN requirements first."
+        )
     issues = []
     with rasterio.open(path) as src:
         data = src.read(masked=True)

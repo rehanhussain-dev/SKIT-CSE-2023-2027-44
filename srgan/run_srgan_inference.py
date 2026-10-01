@@ -34,8 +34,13 @@ Assumptions / things to verify before trusting the output
 
 import argparse
 import os
+
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except ImportError:  # pragma: no cover - optional dependency for CLI execution
+    rasterio = None
 
 # --------------------------------------------------------------------------
 # 0. CONFIG -- edit these for your run
@@ -88,6 +93,11 @@ def inspect_geotiff(path):
     Prints band count, dtype, value range, CRS, and the bands selected for the
     model BEFORE burning GPU time on a bad input.
     """
+    if rasterio is None:
+        raise RuntimeError(
+            "rasterio is required for GeoTIFF inspection. Install the SRGAN requirements with: "
+            "py -3 -m pip install -r srgan/requirements-srgan.txt"
+        )
     with rasterio.open(path) as src:
         print(f"File: {path}")
         print(f"  Band count : {src.count}")
@@ -133,15 +143,23 @@ def load_model(device):
 def read_model_input(src):
     """Read and normalize the GEE band layout into R-G-B-NIR tensors."""
     arr = src.read(MODEL_BAND_INDICES).astype(np.float32)
-    if np.nanmax(arr) > 20:
-        arr /= SCALE_FACTOR
-    return np.clip(np.nan_to_num(arr, nan=0.0), 0, 1)
+    finite_mask = np.isfinite(arr)
+    if finite_mask.any():
+        finite_values = arr[finite_mask]
+        if finite_values.size and np.nanmax(finite_values) > 20:
+            arr = arr / SCALE_FACTOR
+    arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+    return np.clip(arr, 0, 1)
 
 
 # --------------------------------------------------------------------------
 # 3. Run inference using opensr-utils (handles tiling, blending, georeferencing)
 # --------------------------------------------------------------------------
 def run_inference(input_tif, output_tif):
+    if rasterio is None:
+        raise RuntimeError(
+            "rasterio is required to read and write GeoTIFF files. Install the SRGAN requirements first."
+        )
     import torch
 
     device = DEVICE if torch.cuda.is_available() else "cpu"
@@ -190,6 +208,10 @@ def run_inference(input_tif, output_tif):
 #    support your file layout yet)
 # --------------------------------------------------------------------------
 def run_inference_manual(input_tif, output_tif):
+    if rasterio is None:
+        raise RuntimeError(
+            "rasterio is required to read and write GeoTIFF files. Install the SRGAN requirements first."
+        )
     import torch
 
     device = DEVICE if torch.cuda.is_available() else "cpu"

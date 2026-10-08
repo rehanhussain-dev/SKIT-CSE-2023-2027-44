@@ -2,6 +2,7 @@ from pcse.base import ParameterProvider
 from pcse.input.yaml_cropdataprovider import YAMLCropDataProvider
 from pcse.models import Wofost72_WLP_CWB
 
+from wofost_site.site_provider import load_site
 from soil.soil_provider import load_soil
 from weather.pcse_weather import VHRWeatherProvider
 from agromanagement.wheat_2025_26 import AGROMANAGEMENT
@@ -26,21 +27,28 @@ def main():
     for key, value in soil.items():
         print(f"  {key}: {value}")
 
-    # 3. Combine crop and soil parameters
+    # 3. Site parameters
+    site = load_site()
+
+    print("\nSite:")
+    for key, value in site.items():
+        print(f"  {key}: {value}")
+
+    # 4. Combine crop, soil and site parameters
     params = ParameterProvider(
         cropdata=crop,
-        soildata=soil
+        soildata=soil,
+        sitedata=site
     )
 
-    # 4. Weather
+    # 5. Weather
     weather = VHRWeatherProvider()
 
     print("\nWeather:")
-    print("  first:", weather.first_date); print("  last:", weather.last_date)
     print("  first:", weather.first_date)
     print("  last:", weather.last_date)
 
-    # 5. WOFOST model initialization
+    # 6. WOFOST model initialization
     model = Wofost72_WLP_CWB(
         params,
         weather,

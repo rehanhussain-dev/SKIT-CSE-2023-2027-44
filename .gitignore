@@ -48,3 +48,5 @@ token.json
 credentials.json
 temp/
 srgan/instructions.md
+srgan/documentation.md
+srgan/images

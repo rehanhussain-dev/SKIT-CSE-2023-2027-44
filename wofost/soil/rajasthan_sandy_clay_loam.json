@@ -1,0 +1,50 @@
+{
+  "soil_name": "Rajasthan sandy clay loam - representative",
+  "description": "Representative WOFOST soil configuration for the VHR-YieldNet test field near 28.0499639 N, 75.1287765 E, Jhunjhunu region, Rajasthan. Texture is represented as sandy clay loam based on the extracted SoilGrids 250 m pixel composition. Values are not field-laboratory measurements.",
+  "location": {
+    "latitude": 28.0499639,
+    "longitude": 75.1287765
+  },
+  "soilgrids_250m_pixel": {
+    "sand_g_per_kg": 462,
+    "sand_percent": 46.2,
+    "clay_g_per_kg": 268,
+    "clay_percent": 26.8,
+    "silt_percent_estimated": 27.0,
+    "depth_cm": "0-5"
+  },
+  "texture_class": "sandy clay loam",
+  "wofost_parameters": {
+    "SMW": 0.175,
+    "SMFCF": 0.328,
+    "SM0": 0.430,
+    "CRAIRC": 0.060,
+    "K0": 10.0,
+    "SOPE": 10.0,
+    "KSUB": 10.0,
+    "RDMSOL": 150.0
+  },
+  "parameter_status": {
+    "SMW": "representative texture-based value; not field measured",
+    "SMFCF": "representative texture-based value; not field measured",
+    "SM0": "representative texture-based value; not field measured",
+    "CRAIRC": "representative WOFOST/PCSE soil value; not field measured",
+    "K0": "representative WOFOST soil value; not field measured",
+    "SOPE": "representative WOFOST soil value; not field measured",
+    "KSUB": "representative WOFOST soil value; not field measured",
+    "RDMSOL": "provisional development assumption for wheat; not field measured"
+  },
+  "notes": [
+    "SoilGrids composition was extracted from the 250 m pixel containing the test field.",
+    "The field polygon is much smaller than the 250 m SoilGrids pixel.",
+    "SMW, SMFCF and SM0 are representative texture-based values for sandy clay loam.",
+    "CRAIRC, K0, SOPE and KSUB are representative WOFOST/PCSE soil parameters and are not field measurements.",
+    "RDMSOL of 150 cm is a provisional development assumption for the wheat simulation and must not be described as measured soil depth.",
+    "These parameters should be replaced or recalibrated if field soil measurements become available."
+  ],
+  "sources": {
+    "soilgrids": "https://www.isric.org/explore/soilgrids",
+    "wofost_documentation": "https://wofost.readthedocs.io/",
+    "pcse_documentation": "https://pcse.readthedocs.io/"
+  }
+}

@@ -134,10 +134,27 @@ def inspect_geotiff(path):
 
 def load_model(device):
     """Load the pretrained four-band RGB-NIR model."""
-    import torch
     from opensr_srgan import load_inference_model
 
     return load_inference_model("RGB-NIR").to(device).eval()
+
+
+def validate_inference_source(src):
+    """Reject GeoTIFF sources that cannot produce meaningful model input."""
+    if src.width <= 0 or src.height <= 0:
+        raise ValueError("The input GeoTIFF must have positive width and height")
+    if src.count < max(MODEL_BAND_INDICES):
+        raise ValueError(
+            f"The input must contain bands {MODEL_BAND_INDICES}; found {src.count} bands"
+        )
+    if src.crs is None:
+        raise ValueError("The input GeoTIFF is missing a CRS")
+    if not src.transform:
+        raise ValueError("The input GeoTIFF is missing an affine transform")
+
+    selected = src.read(MODEL_BAND_INDICES)
+    if not np.isfinite(selected).any():
+        raise ValueError("The selected RGB-NIR bands contain no finite pixels")
 
 
 def read_model_input(src):
@@ -173,6 +190,7 @@ def run_inference(input_tif, output_tif):
     model = load_model(device)
 
     with rasterio.open(input_tif) as src:
+        validate_inference_source(src)
         source_profile = src.profile.copy()
         source_transform = src.transform
         source_height, source_width = src.height, src.width
@@ -218,6 +236,7 @@ def run_inference_manual(input_tif, output_tif):
     model = load_model(device)
 
     with rasterio.open(input_tif) as src:
+        validate_inference_source(src)
         profile = src.profile
         arr = read_model_input(src)
 

@@ -35,6 +35,10 @@ py -3 srgan/review_patches.py data/patches
 
 The inference runner selects `B4, B3, B2, B8` as Red, Green, Blue, NIR,
 normalizes raw Sentinel-2 values, and writes a georeferenced `_SR.tif`.
+Before loading the model, it rejects inputs with missing CRS/transform,
+insufficient bands, invalid dimensions, or no finite pixels in the selected
+RGB-NIR bands. Partial invalid pixels are converted to zero during
+normalization.
 
 ```powershell
 py -3 srgan/run_srgan_inference.py data/patches/field_01.tif

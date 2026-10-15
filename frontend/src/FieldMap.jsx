@@ -11,7 +11,15 @@ function FieldMap() {
   const [coordInput, setCoordInput] = useState('');
   const [error, setError] = useState('');
   const [fieldCount, setFieldCount] = useState(0);
+  const [fields, setFields] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
+
+  // Reads every polygon on the map (drawn + manual) and keeps state in sync
+  const syncFields = () => {
+    const features = drawnItemsRef.current.toGeoJSON().features;
+    setFields(features);
+    setFieldCount(features.length);
+  };
 
   useEffect(() => {
     if (mapInstanceRef.current) return;
@@ -44,7 +52,7 @@ function FieldMap() {
     map.on(L.Draw.Event.CREATED, (event) => {
       const layer = event.layer;
       drawnItems.addLayer(layer);
-      setFieldCount(drawnItems.getLayers().length);
+      syncFields();
       console.log('Field boundary drawn:', layer.toGeoJSON());
     });
 
@@ -52,10 +60,11 @@ function FieldMap() {
       event.layers.eachLayer((layer) => {
         console.log('Field boundary edited:', layer.toGeoJSON());
       });
+      syncFields();
     });
 
     map.on(L.Draw.Event.DELETED, () => {
-      setFieldCount(drawnItems.getLayers().length);
+      syncFields();
       console.log('Field(s) deleted. Remaining:', drawnItems.getLayers().length);
     });
 
@@ -80,7 +89,7 @@ function FieldMap() {
       const polygon = L.polygon(parsed, { color: 'red' });
       drawnItemsRef.current.addLayer(polygon);
       mapInstanceRef.current.fitBounds(polygon.getBounds());
-      setFieldCount(drawnItemsRef.current.getLayers().length);
+      syncFields();
 
       console.log('Manual field loaded:', polygon.toGeoJSON());
       setCoordInput('');
@@ -90,13 +99,12 @@ function FieldMap() {
   };
 
   const handleClearAll = () => {
-    if(fieldCount==0) return;
+    if (fieldCount === 0) return;
     const confirmClear = window.confirm('Are you sure you want to clear all fields?');
-    if(confirmClear){
-       drawnItemsRef.current.clearLayers();
-      setFieldCount(0);
+    if (confirmClear) {
+      drawnItemsRef.current.clearLayers();
+      syncFields();
     }
-   
   };
 
   return (
@@ -164,6 +172,35 @@ function FieldMap() {
           <p style={{ margin: '0 0 6px 0', fontSize: '12px' }}>
             Fields on map: <strong>{fieldCount}</strong>
           </p>
+
+          <p style={{ margin: '8px 0 4px 0', fontSize: '12px', fontWeight: 'bold' }}>
+            Coordinates [lng, lat]:
+          </p>
+          <pre
+            style={{
+              maxHeight: '150px',
+              overflow: 'auto',
+              fontSize: '11px',
+              background: '#f4f4f4',
+              padding: '6px',
+              margin: '0 0 6px 0',
+            }}
+          >
+            {fields.length
+              ? JSON.stringify(fields.map((f) => f.geometry.coordinates), null, 1)
+              : 'Draw a polygon to see coordinates'}
+          </pre>
+          <button
+            onClick={() =>
+              navigator.clipboard.writeText(
+                JSON.stringify(fields.map((f) => f.geometry), null, 2)
+              )
+            }
+            style={{ width: '100%', marginBottom: '6px' }}
+          >
+            Copy GeoJSON
+          </button>
+
           <button onClick={handleClearAll} style={{ width: '100%', background: '#f5b3b3' }}>
             Clear All Fields
           </button>

@@ -6,6 +6,18 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1",
+    ).split(",")
+    if host.strip()
+]
 # Paths to the GDAL and GEOS libraries (set in each developer's own .env)
 GDAL_LIBRARY_PATH = os.getenv('GDAL_LIBRARY_PATH')
 GEOS_LIBRARY_PATH = os.getenv('GEOS_LIBRARY_PATH')
@@ -45,6 +57,7 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
+        'sslmode': os.getenv('DB_SSLMODE', 'prefer'),
             'sslmode': os.getenv('DB_SSLMODE', 'require'),
         },
     }
@@ -80,6 +93,9 @@ TEMPLATES = [
 ]
 
 ROOT_URLCONF = 'config.urls'
+
+# Static files (CSS, JavaScript, images)
+STATIC_URL = "static/"
 # CORS: allow the local React dev servers to talk to this API
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',

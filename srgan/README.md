@@ -48,3 +48,20 @@ py -3 srgan/run_srgan_inference.py data/patches/field_01.tif --output data/sr/fi
 Use `--install` only when the environment has internet access and the SRGAN
 dependencies are not installed yet. GPU inference is preferred; CPU inference
 works but is slower.
+
+## Fine-tune on paired agricultural patches
+
+Create one `.npz` file per example with `lr` shaped `(4, H, W)` and `hr`
+shaped `(4, H*4, W*4)`. Both 0–1 reflectance and 0–10000 Sentinel-2 values
+are accepted:
+
+```powershell
+py -3 srgan/finetune_srgan.py data/paired_patches `
+  --output srgan/checkpoints/rgb_nir_finetuned.pt `
+  --epochs 10 --batch-size 4 --learning-rate 1e-5
+```
+
+The script starts from the pretrained RGB-NIR generator, uses supervised L1
+loss on the paired high-resolution target, keeps a deterministic validation
+split, clips gradients, and saves the best generator checkpoint. At least two
+paired `.npz` files are required.

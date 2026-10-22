@@ -1,21 +1,22 @@
 from rest_framework import generics
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 
 from .models import FarmPlot
 from .serializers import FarmPlotSerializer
 
 
-class FarmPlotListView(generics.ListAPIView):
-    """List farm plots with their GeoJSON boundaries."""
+class FarmPlotListView(generics.ListCreateAPIView):
+    """List farm plots (GET) or create a new plot from a GeoJSON polygon (POST)."""
 
-    queryset = FarmPlot.objects.all().order_by("id")
+    # Newest plots first, same as the old fields API
+    queryset = FarmPlot.objects.all().order_by("-created_at")
     serializer_class = FarmPlotSerializer
     permission_classes = [AllowAny]
 
 
-class FarmPlotDetailView(generics.RetrieveAPIView):
-    """Retrieve one farm plot by its database ID."""
+class FarmPlotDetailView(generics.RetrieveDestroyAPIView):
+    """Retrieve one plot (GET) or delete it (DELETE, login required)."""
 
     queryset = FarmPlot.objects.all()
     serializer_class = FarmPlotSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]

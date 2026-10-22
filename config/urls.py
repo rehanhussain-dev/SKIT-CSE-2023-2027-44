@@ -3,8 +3,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # Rehan's cadastral API
-    path("api/v1/cadastral/", include("cadastral.urls")),
-    # fields/urls.py defines "fields/", so the full address becomes /api/fields/
-    path("api/", include("fields.urls")),
+    path(
+        "api/v1/cadastral/",
+        include("cadastral.urls"),
+    ),
 ]

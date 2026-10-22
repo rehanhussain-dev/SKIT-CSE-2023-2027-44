@@ -39,7 +39,7 @@ INSTALLED_APPS = [
 
     # Internal Project Apps
     'cadastral',
-    'fields',
+    
 ]
 
 # Configure PostGIS spatial database engine

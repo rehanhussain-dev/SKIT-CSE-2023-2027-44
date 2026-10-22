@@ -1,5 +1,5 @@
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 
 from .models import FarmPlot
 from .serializers import FarmPlotSerializer
@@ -11,7 +11,7 @@ class FarmPlotListView(generics.ListCreateAPIView):
     # Newest plots first, same as the old fields API
     queryset = FarmPlot.objects.all().order_by("-created_at")
     serializer_class = FarmPlotSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
 
 
 class FarmPlotDetailView(generics.RetrieveDestroyAPIView):

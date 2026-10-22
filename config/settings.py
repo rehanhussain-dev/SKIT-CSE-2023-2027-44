@@ -18,15 +18,10 @@ ALLOWED_HOSTS = [
     ).split(",")
     if host.strip()
 ]
+
 # Paths to the GDAL and GEOS libraries (set in each developer's own .env)
 GDAL_LIBRARY_PATH = os.getenv('GDAL_LIBRARY_PATH')
 GEOS_LIBRARY_PATH = os.getenv('GEOS_LIBRARY_PATH')
-
-
-# Secrets and environment-specific settings are read from the .env file
-SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -57,13 +52,12 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
-        'sslmode': os.getenv('DB_SSLMODE', 'prefer'),
             'sslmode': os.getenv('DB_SSLMODE', 'require'),
         },
     }
 }
 
-# ── Add MIDDLEWARE ────────────────────────────────────────────────────────────
+# Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # must be before CommonMiddleware
@@ -75,7 +69,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ── Add TEMPLATES ─────────────────────────────────────────────────────────────
+# Templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -95,7 +89,8 @@ TEMPLATES = [
 ROOT_URLCONF = 'config.urls'
 
 # Static files (CSS, JavaScript, images)
-STATIC_URL = "static/"
+STATIC_URL = 'static/'
+
 # CORS: allow the local React dev servers to talk to this API
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
@@ -103,7 +98,6 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
 ]
-
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
@@ -115,6 +109,3 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
 }
-
-# URL prefix for static files (CSS, JavaScript, images)
-STATIC_URL = 'static/'

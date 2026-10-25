@@ -1,5 +1,7 @@
 from rest_framework import generics
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 
 from .models import FarmPlot
 from .serializers import FarmPlotSerializer
@@ -20,3 +22,10 @@ class FarmPlotDetailView(generics.RetrieveDestroyAPIView):
     queryset = FarmPlot.objects.all()
     serializer_class = FarmPlotSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def health_check(request):
+    """Lightweight check that Django is running; it does not touch the database."""
+    return Response({"status": "ok"})

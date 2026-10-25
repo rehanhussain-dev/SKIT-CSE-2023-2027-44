@@ -7,6 +7,41 @@ import 'leaflet-draw';
 // Base address of the Django API, read from frontend/.env
 const API_URL = import.meta.env.VITE_API_URL;
 
+
+
+// Loads every plot saved in the database and draws it on the map (read-only layer)
+async function loadSavedFields(map, savedLayer) {
+  try {
+    const response = await fetch(`${API_URL}/v1/cadastral/plots/`);
+    if (!response.ok) return;
+
+    const plots = await response.json();
+    savedLayer.clearLayers();
+
+    plots.forEach((plot) => {
+      const geometry = plot.geometry || plot.boundary;
+      if (!geometry) return;
+
+      const layer = L.geoJSON(geometry, {
+        style: { color: '#2e7d32', weight: 2, fillOpacity: 0.25 },
+      });
+
+      // textContent keeps the popup safe even if a plot code contains HTML characters
+      const popup = document.createElement('div');
+      popup.textContent = `${plot.plot_code} - ${plot.area_hectares ?? '?'} ha`;
+      layer.bindPopup(popup);
+
+      savedLayer.addLayer(layer);
+    });
+
+    if (savedLayer.getLayers().length > 0) {
+      map.fitBounds(savedLayer.getBounds());
+    }
+  } catch (err) {
+    console.log('Could not load saved fields:', err);
+  }
+}
+
 function FieldMap() {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -38,6 +73,13 @@ function FieldMap() {
 
     const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
+        // Separate layer for plots that are already saved (not editable, never re-saved)
+    const savedLayer = new L.FeatureGroup();
+    map.addLayer(savedLayer);
+        // Dev only: loading every saved plot is for testing, not for real farmers
+    if (import.meta.env.DEV) {
+      loadSavedFields(map, savedLayer);
+    }
     drawnItemsRef.current = drawnItems;
 
     const drawControl = new L.Control.Draw({

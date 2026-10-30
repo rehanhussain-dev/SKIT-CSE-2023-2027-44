@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -84,21 +85,50 @@ class TrainConfig:
     batch_size: int
     learning_rate: float
     validation_fraction: float
+    group_pattern: str | None
     seed: int
     device: str
 
 
-def split_paths(paths: list[Path], validation_fraction: float, seed: int) -> tuple[list[Path], list[Path]]:
-    """Create a deterministic, non-empty train/validation split."""
+def split_paths(
+    paths: list[Path],
+    validation_fraction: float,
+    seed: int,
+    group_pattern: str | None = None,
+) -> tuple[list[Path], list[Path]]:
+    """Create a deterministic split, optionally keeping filename groups together."""
     if len(paths) < 2:
         raise ValueError("At least two paired patches are required")
     if not 0 < validation_fraction < 1:
         raise ValueError("validation_fraction must be between 0 and 1")
-    shuffled = list(paths)
-    random.Random(seed).shuffle(shuffled)
-    validation_size = max(1, round(len(shuffled) * validation_fraction))
-    validation_size = min(validation_size, len(shuffled) - 1)
-    return shuffled[validation_size:], shuffled[:validation_size]
+    rng = random.Random(seed)
+    if group_pattern is None:
+        shuffled = list(paths)
+        rng.shuffle(shuffled)
+        validation_size = max(1, round(len(shuffled) * validation_fraction))
+        validation_size = min(validation_size, len(shuffled) - 1)
+        return shuffled[validation_size:], shuffled[:validation_size]
+
+    pattern = re.compile(group_pattern)
+    grouped: dict[str, list[Path]] = {}
+    for path in paths:
+        match = pattern.search(path.name)
+        if match is None or "group" not in match.groupdict():
+            raise ValueError(
+                "group_pattern must match every filename and define a named 'group' capture"
+            )
+        grouped.setdefault(match.group("group"), []).append(path)
+    if len(grouped) < 2:
+        raise ValueError("group_pattern must identify at least two groups")
+
+    groups = list(grouped)
+    rng.shuffle(groups)
+    validation_size = max(1, round(len(groups) * validation_fraction))
+    validation_size = min(validation_size, len(groups) - 1)
+    validation_groups = set(groups[:validation_size])
+    validation = [path for group in groups if group in validation_groups for path in grouped[group]]
+    train = [path for group in groups if group not in validation_groups for path in grouped[group]]
+    return train, validation
 
 
 def _run_epoch(model: Any, loader: Any, optimizer: Any | None, device: Any) -> float:
@@ -135,7 +165,9 @@ def fine_tune(config: TrainConfig) -> dict[str, Any]:
     paths = sorted(Path(config.data_dir).glob("*.npz"))
     if not paths:
         raise FileNotFoundError(f"No .npz paired patches found in {config.data_dir}")
-    train_paths, validation_paths = split_paths(paths, config.validation_fraction, config.seed)
+    train_paths, validation_paths = split_paths(
+        paths, config.validation_fraction, config.seed, config.group_pattern
+    )
     device = torch.device(config.device if config.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 
     pretrained = load_inference_model(config.preset, map_location=device)
@@ -183,6 +215,13 @@ def parse_args() -> TrainConfig:
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--validation-fraction", type=float, default=0.2)
+    parser.add_argument(
+        "--group-pattern",
+        help=(
+            "Regex used to keep related patches together; it must define a named "
+            "'group' capture, e.g. '(?P<group>field_[^_]+)'"
+        ),
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
     args = parser.parse_args()
@@ -196,6 +235,7 @@ def parse_args() -> TrainConfig:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         validation_fraction=args.validation_fraction,
+        group_pattern=args.group_pattern,
         seed=args.seed,
         device=args.device,
     )

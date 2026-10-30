@@ -64,4 +64,16 @@ py -3 srgan/finetune_srgan.py data/paired_patches `
 The script starts from the pretrained RGB-NIR generator, uses supervised L1
 loss on the paired high-resolution target, keeps a deterministic validation
 split, clips gradients, and saves the best generator checkpoint. At least two
-paired `.npz` files are required.
+paired `.npz` files are required. If patches from the same field or scene share
+information, use a named regex capture to keep those groups out of both
+splits:
+
+```powershell
+py -3 srgan/finetune_srgan.py data/paired_patches `
+  --group-pattern "(?P<group>field_[^_]+)" `
+  --output srgan/checkpoints/rgb_nir_finetuned.pt
+```
+
+The pattern must match every filename and define a `group` capture. Group-aware
+validation is recommended for estimating performance on unseen fields; without
+it, the default split is by individual patch.

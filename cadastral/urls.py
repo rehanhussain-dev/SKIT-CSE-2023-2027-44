@@ -1,6 +1,11 @@
 from django.urls import path
 
-from .views import FarmPlotDetailView, FarmPlotListView, health_check
+from .views import (
+    FarmPlotDetailView,
+    FarmPlotListView,
+    health_check,
+    plot_result,
+)
 
 app_name = "cadastral"
 
@@ -14,6 +19,11 @@ urlpatterns = [
         "plots/<int:pk>/",
         FarmPlotDetailView.as_view(),
         name="plot-detail",
+    ),
+    path(
+        "plots/<int:pk>/result/",
+        plot_result,
+        name="plot-result",
     ),
     path(
         "health/",

@@ -4,7 +4,7 @@ export_patches.py
 Tiles input multispectral Sentinel-2/Planet GeoTIFF rasters into
 standardized 128x128 patches for the SRGAN super-resolution training pipeline.
 Applies centered constant zero-padding for small parcels to prevent
-kaleidoscopic mirror-reflection artifacts.
+kaleidoscopic mirror-reflection artifacts and sanitizes all NaN/Inf index values.
 """
 
 import os
@@ -28,8 +28,17 @@ def slice_raster_to_patches(input_tif, output_dir, patch_size=PATCH_SIZE, stride
     with rasterio.open(input_tif) as src:
         width = src.width
         height = src.height
-        nodata = src.nodata if src.nodata is not None else 0
+        nodata = src.nodata if src.nodata is not None else 0.0
         data = src.read()
+
+        # Sanitize any raw division-by-zero artifacts (NaN / Inf -> nodata)
+        data = np.nan_to_num(data, nan=nodata, posinf=nodata, neginf=nodata)
+
+        # Check if the raster has any non-nodata pixels
+        valid_mask = data != nodata
+        if not np.any(valid_mask):
+            print(f"  [SKIPPED EMPTY] {base_name} contains 100% nodata.")
+            return 0
 
         # Center-pad small parcels directly to patch_size x patch_size
         if width < patch_size or height < patch_size:
@@ -38,13 +47,16 @@ def slice_raster_to_patches(input_tif, output_dir, patch_size=PATCH_SIZE, stride
             pad_left = (patch_size - width) // 2
             pad_right = patch_size - width - pad_left
 
-            # Symmetrical constant zero padding
+            # Symmetrical constant zero/nodata padding
             padded = np.pad(
                 data,
                 ((0, 0), (pad_top, pad_bottom), (pad_left, pad_right)),
                 mode="constant",
                 constant_values=nodata,
             )
+
+            # Ensure padded margin is clean of Inf/NaN
+            padded = np.nan_to_num(padded, nan=nodata, posinf=nodata, neginf=nodata)
 
             # Adjust geospatial geotransform origin for top-left padding shift
             orig_transform = src.transform
@@ -83,6 +95,8 @@ def slice_raster_to_patches(input_tif, output_dir, patch_size=PATCH_SIZE, stride
             for left in range(0, width - patch_size + 1, stride):
                 window = Window(left, top, patch_size, patch_size)
                 patch_data = src.read(window=window)
+
+                patch_data = np.nan_to_num(patch_data, nan=nodata, posinf=nodata, neginf=nodata)
 
                 zero_mask = (patch_data == nodata) | (patch_data == 0)
                 zero_ratio = np.sum(zero_mask) / patch_data.size

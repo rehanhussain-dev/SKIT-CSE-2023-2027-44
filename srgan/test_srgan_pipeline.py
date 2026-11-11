@@ -186,6 +186,31 @@ class SrganPipelineTests(unittest.TestCase):
         # Model order Blue, Green, Red, NIR -> output order B4 (red), B3, B2, B8
         np.testing.assert_allclose(sr[:, 7, 7], [0.3, 0.2, 0.1, 0.4], rtol=1e-6)
 
+    def test_residual_sr_output_averages_back_to_its_input(self):
+        import torch
+
+        from train_residual_sr import ResidualSR
+
+        torch.manual_seed(0)
+        model = ResidualSR(features=8, blocks=1)
+        torch.nn.init.normal_(model.tail.weight, std=0.5)  # an arbitrary, untrained detail layer
+        lr = torch.rand(1, 4, 5, 7)
+        with torch.no_grad():
+            sr = model(lr)
+        self.assertEqual(tuple(sr.shape), (1, 4, 20, 28))
+        self.assertGreater(float(sr.std()), 0)
+        torch.testing.assert_close(torch.nn.functional.avg_pool2d(sr, 4), lr, atol=1e-5, rtol=0)
+
+    def test_harmonise_maps_planet_radiometry_onto_sentinel(self):
+        from train_residual_sr import harmonise, masked_block_mean
+
+        rng = np.random.default_rng(0)
+        hr = rng.uniform(0.05, 0.4, size=(4, 16, 16)).astype(np.float32)
+        valid = np.ones((16, 16), dtype=bool)
+        valid[:4, :4] = False
+        lr = 0.8 * masked_block_mean(hr, valid) + 0.03  # Sentinel-2 = gain * Planet + offset
+        np.testing.assert_allclose(harmonise(hr, lr, valid), 0.8 * hr + 0.03, atol=1e-4)
+
 
 if __name__ == "__main__":
     unittest.main()

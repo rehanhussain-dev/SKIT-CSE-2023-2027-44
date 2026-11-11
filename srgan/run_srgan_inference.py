@@ -134,6 +134,20 @@ def inspect_geotiff(path):
 
 def load_model(device):
     """Load the pretrained four-band RGB-NIR model."""
+    import sys
+
+    # opensr_srgan imports wandb for training-time logging only. Some
+    # environments (e.g. Python 3.10.0 with a recent pydantic) cannot import
+    # wandb at all; inference does not need it, so fall back to a stub.
+    try:
+        import wandb  # noqa: F401
+    except Exception:
+        from unittest.mock import MagicMock
+
+        for name in [key for key in sys.modules if key.split(".")[0] == "wandb"]:
+            del sys.modules[name]
+        sys.modules["wandb"] = MagicMock()
+
     from opensr_srgan import load_inference_model
 
     return load_inference_model("RGB-NIR").to(device).eval()

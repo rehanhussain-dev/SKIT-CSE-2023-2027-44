@@ -1,0 +1,110 @@
+{
+  "patches_validated": 178,
+  "thresholds": {
+    "max_rmse": 0.01,
+    "max_ndvi_mean_diff": 0.02,
+    "min_season_r": 0.99
+  },
+  "georeferencing": {
+    "patches_with_issues": []
+  },
+  "radiometric_consistency": {
+    "median_rmse": 0.042189981788396835,
+    "max_rmse": 0.08398997038602829,
+    "median_bias": 0.028564454056322575,
+    "min_r": 0.8423341257656732
+  },
+  "sharpening": {
+    "median_edge_ratio_sr_vs_bicubic": 1.0818128842446615,
+    "fraction_dates_sharper_than_bicubic": 0.5561797752808989,
+    "median_subpixel_ndvi_std_sr": 0.0115966172888875,
+    "median_subpixel_ndvi_std_bicubic": 0.009161042049527168
+  },
+  "lstm_inputs": {
+    "max_abs_ndvi_mean_diff": 0.16402608156204224,
+    "mean_ndvi_mean_diff": 0.002110385911518268,
+    "min_season_r": -0.48303881247895764,
+    "seasons": {
+      "2016-2017": {
+        "observations": 7,
+        "r": 0.7214554487889727,
+        "max_abs_diff": 0.05647870898246765,
+        "mean_diff": -0.0014005622693470546
+      },
+      "2017-2018": {
+        "observations": 11,
+        "r": 0.09102535769067749,
+        "max_abs_diff": 0.04737630486488342,
+        "mean_diff": 0.012685125524347479
+      },
+      "2018-2019": {
+        "observations": 17,
+        "r": 0.10381763892047612,
+        "max_abs_diff": 0.08101150393486023,
+        "mean_diff": 0.0016527868369046379
+      },
+      "2019-2020": {
+        "observations": 19,
+        "r": 0.24132375306348808,
+        "max_abs_diff": 0.14057348668575287,
+        "mean_diff": 0.01856554730942375
+      },
+      "2020-2021": {
+        "observations": 21,
+        "r": -0.45455121344872457,
+        "max_abs_diff": 0.09476880729198456,
+        "mean_diff": 0.0057542465981983
+      },
+      "2021-2022": {
+        "observations": 22,
+        "r": -0.16774706662962027,
+        "max_abs_diff": 0.16402608156204224,
+        "mean_diff": 0.007334048775109378
+      },
+      "2022-2023": {
+        "observations": 21,
+        "r": 0.4521763977949212,
+        "max_abs_diff": 0.12869206070899963,
+        "mean_diff": -0.015827914079030354
+      },
+      "2023-2024": {
+        "observations": 20,
+        "r": 0.5369008830345172,
+        "max_abs_diff": 0.05571158230304718,
+        "mean_diff": 0.024254996329545975
+      },
+      "2024-2025": {
+        "observations": 19,
+        "r": -0.48303881247895764,
+        "max_abs_diff": 0.11518767476081848,
+        "mean_diff": -0.014168205229859603
+      },
+      "2025-2026": {
+        "observations": 21,
+        "r": -0.057536093390839614,
+        "max_abs_diff": 0.08599668741226196,
+        "mean_diff": -0.014315838615099588
+      }
+    },
+    "note": "The SR model outputs B4, B3, B2, B8 only. NDVI can be derived at 2.5 m; NDRE (needs B5) and SI (needs B11) cannot, so those LSTM features still come from the native-resolution bands."
+  },
+  "planet_reference": {
+    "paired_dates": 45,
+    "median_ndvi_r_sr": 0.6377337426441327,
+    "median_ndvi_r_bicubic": 0.7977669520996616,
+    "median_boundary_ndvi_r_sr": 0.6207439935065988,
+    "median_boundary_ndvi_r_bicubic": 0.7738911668562299,
+    "median_edge_strength_reference": 0.030399097129702568,
+    "median_edge_strength_sr": 0.016325967386364937,
+    "median_edge_strength_bicubic": 0.018067065626382828,
+    "fraction_dates_sr_beats_bicubic": 0.022222222222222223
+  },
+  "checks": {
+    "georeferencing": true,
+    "radiometric_consistency": false,
+    "sharper_than_bicubic": true,
+    "lstm_ndvi_series": false,
+    "matches_planet_at_least_as_well_as_bicubic": false
+  },
+  "passed": false
+}

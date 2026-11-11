@@ -62,12 +62,26 @@ repository.
 
 ## Current status
 
-The upscaling, georeferencing and validation steps work end to end. Neither
-model passes the full validation yet: the pretrained SRGAN adds detail that
-is not present in the real 3 m imagery, and the current SRResNet checkpoint
-blurs the image and flattens the seasonal NDVI curve. Upscaled output should
-not be used downstream until a retrained model passes
-`validate_sr_consistency.py`. Details are in the sections below.
+The upscaling, georeferencing and validation steps work end to end. No model
+passes the full validation yet:
+
+| Model | Result |
+| --- | --- |
+| Pretrained SRGAN | Fails the PlanetScope check: adds detail that is not in the real 3 m imagery |
+| SRResNet (`srresnet_best.pt`) | Fails three checks: blurs the image and flattens the seasonal NDVI curve. Do not use |
+| Residual model (`residual_sr_best.pt`) | Passes four of five checks. Keeps reflectance and the NDVI series exactly and is sharper than bicubic, but matches PlanetScope only about as well as bicubic (NDVI correlation 0.789 vs 0.798) |
+
+The residual model is the one to use: its output cannot distort the values
+the LSTM reads. Its extra sharpness is not yet shown to be real field detail,
+so do not rely on it for field-boundary work.
+
+Train and run the residual model:
+
+```powershell
+py -3 srgan/train_residual_sr.py --lr-dir srgan/low/LR --hr-dir srgan/high/high
+py -3 srgan/run_srresnet_inference.py srgan/low/LR `
+  --checkpoint srgan/checkpoints/residual_sr_best.pt --output-dir srgan/outputs/residual_sr
+```
 
 ## Run the tests
 

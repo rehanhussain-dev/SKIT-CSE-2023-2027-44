@@ -93,7 +93,16 @@ def load_srresnet(checkpoint=DEFAULT_CHECKPOINT, device="cpu"):
     bands = tuple(payload.get("bands", ("blue", "green", "red", "nir")))
     if bands != ("blue", "green", "red", "nir") or payload.get("factor", FACTOR) != FACTOR:
         raise ValueError(f"Unsupported checkpoint layout: bands={bands}, factor={payload.get('factor')}")
-    model = build_model()
+    if payload.get("arch") == "residual_sr_v1":
+        # Checkpoint from train_residual_sr.py: bicubic plus a learned, input-consistent detail layer.
+        import sys
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from train_residual_sr import ResidualSR
+
+        model = ResidualSR(payload.get("features", 48), payload.get("blocks", 8))
+    else:
+        model = build_model()
     model.load_state_dict(state, strict=True)
     return model.to(device).eval()
 
@@ -176,7 +185,7 @@ def super_resolve(model, lr, device="cpu"):
     valid = np.isfinite(lr).all(axis=0)
     with torch.inference_mode():
         sr = model(torch.from_numpy(np.nan_to_num(lr, nan=0.0)).unsqueeze(0).to(device))
-    sr = sr.squeeze(0).cpu().numpy().astype(np.float32)[list(SR_BAND_ORDER)]
+    sr = np.clip(sr.squeeze(0).cpu().numpy().astype(np.float32), 0, 1)[list(SR_BAND_ORDER)]
     sr[:, ~np.repeat(np.repeat(valid, FACTOR, axis=0), FACTOR, axis=1)] = np.nan
     return sr
 

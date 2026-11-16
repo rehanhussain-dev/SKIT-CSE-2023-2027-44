@@ -1,0 +1,4 @@
+cultivar,simulation_status,anthesis_proxy_date,maturity_date,last_simulated_day,last_DVS,max_LAI_to_date,TAGP_at_last_day,TWSO_at_last_day,mean_RFTRA_to_last_day,minimum_RFTRA_to_last_day,weather_exhausted
+Winter_wheat_107,matured,2026-04-02,2026-05-05,2026-05-05,2.0,6.893355362571868,5542.744997112926,1.6323654957919989,0.6547870176123926,0.0,False
+Winter_wheat_106,matured,2026-04-17,2026-05-19,2026-05-19,2.0,5.820532430323369,4561.8622063959265,0.0,0.608434076020167,0.0,False
+apache,incomplete_weather_coverage,,,2026-05-31,0.7239594811677376,5.659446123584889,4452.675166440563,0.0,0.5712383195655384,0.0,True

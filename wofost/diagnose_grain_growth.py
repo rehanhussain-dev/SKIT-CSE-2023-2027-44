@@ -49,7 +49,7 @@ class DiagnosticWofost(Wofost72_WLP_CWB):
         for name in ["WRT", "WLV", "WST", "WSO"]:
             row[name] = self.crop.get_variable(name)
 
-        # -------------------------------------------------
+               # -------------------------------------------------
         # 3. Leaf cohort age and biomass diagnostics
         # -------------------------------------------------
 
@@ -59,15 +59,42 @@ class DiagnosticWofost(Wofost72_WLP_CWB):
         leaf_biomass = list(leaf_states.LV)
 
         span = self.crop.lv_dynamics.params.SPAN
+        biomass_epsilon = 1e-9
 
+        # Pair cohort biomass with physiological age.
+        cohorts = list(zip(leaf_biomass, leaf_ages))
+
+        # Existing diagnostics: retain for compatibility.
         aged_cohorts = [
             (biomass, age)
-            for biomass, age in zip(leaf_biomass, leaf_ages)
+            for biomass, age in cohorts
             if age > span
         ]
 
+        # New diagnostics: distinguish living and zero-biomass cohorts.
+        positive_cohorts = [
+            (biomass, age)
+            for biomass, age in cohorts
+            if biomass > biomass_epsilon
+        ]
+
+        zero_biomass_cohorts = [
+            (biomass, age)
+            for biomass, age in cohorts
+            if biomass <= biomass_epsilon
+        ]
+
+        aged_living_cohorts = [
+            (biomass, age)
+            for biomass, age in aged_cohorts
+            if biomass > biomass_epsilon
+        ]
+
+        cohort_biomass_sum = sum(leaf_biomass)
+        wlv = row["WLV"]
+
         row["SPAN"] = span
-        row["LEAF_COHORTS"] = len(leaf_ages)
+        row["LEAF_COHORTS"] = len(cohorts)
 
         row["OLDEST_LEAF_AGE"] = (
             max(leaf_ages) if leaf_ages else 0.0
@@ -83,13 +110,31 @@ class DiagnosticWofost(Wofost72_WLP_CWB):
             biomass for biomass, age in aged_cohorts
         )
 
-        # Extract daily leaf loss rates
+        row["POSITIVE_LEAF_COHORTS"] = len(positive_cohorts)
+        row["ZERO_BIOMASS_COHORTS"] = len(zero_biomass_cohorts)
+
+        row["AGED_LIVING_COHORTS"] = len(aged_living_cohorts)
+
+        row["AGED_LIVING_LV_BIOMASS"] = sum(
+            biomass for biomass, age in aged_living_cohorts
+        )
+
+        row["LEAF_COHORT_BIOMASS_SUM"] = cohort_biomass_sum
+
+        row["LEAF_BIOMASS_BALANCE_ERROR"] = (
+            cohort_biomass_sum - wlv
+        )
+
+        # Extract daily leaf loss and growth rates.
         leaf_rates = self.crop.lv_dynamics.rates._trait_values
 
-        for name in ["DSLV1", "DSLV2", "DSLV3", "DALV", "DRLV", "FYSAGE"]:
+        for name in [
+            "DSLV1", "DSLV2", "DSLV3",
+            "DALV", "DRLV", "FYSAGE"
+        ]:
             row[name] = leaf_rates.get(name, float("nan"))
 
-        row["GRLV"] = self.crop.lv_dynamics.rates._trait_values.get("GRLV", float("nan"))
+        row["GRLV"] = leaf_rates.get("GRLV", float("nan"))
 
         # Root growth, death and accumulated dead-root biomass
         root_rates = self.crop.ro_dynamics.rates._trait_values
@@ -232,6 +277,12 @@ def main():
         "YOUNGEST_LEAF_AGE",
         "AGED_COHORTS",
         "AGED_LV_BIOMASS",
+        "POSITIVE_LEAF_COHORTS",
+        "ZERO_BIOMASS_COHORTS",
+        "AGED_LIVING_COHORTS",
+        "AGED_LIVING_LV_BIOMASS",
+        "LEAF_COHORT_BIOMASS_SUM",
+        "LEAF_BIOMASS_BALANCE_ERROR"
     ]
 
     with output_file.open(

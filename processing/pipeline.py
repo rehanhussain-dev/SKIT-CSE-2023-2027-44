@@ -1,5 +1,5 @@
 """One function that turns a field polygon into a result dictionary."""
-
+from make_synthetic_grid import NODATA, PIXEL_SIZE, UTM_CRS, build_grid
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -42,6 +42,19 @@ def process_field(polygon_geojson, raster_path, unit=DEFAULT_UNIT):
     result["stress_breakdown"] = dict(mock_stress_split())
     return result
 
+def process_polygon(polygon_geojson, unit=DEFAULT_UNIT):
+    """Same result as process_field, but builds the mock grid in memory.
+
+    This works for any polygon, so no saved raster file is needed.
+    """
+    polygon_lonlat = shape(polygon_geojson)
+    values, transform = build_grid(polygon_lonlat)
+
+    _, inside = mask_field(values, transform, UTM_CRS, polygon_lonlat, NODATA)
+    result = aggregate(values, inside, PIXEL_SIZE * PIXEL_SIZE, unit)
+    result["stress_breakdown"] = dict(mock_stress_split())
+    return result
+
 
 if __name__ == "__main__":
     data = json.loads(
@@ -49,3 +62,4 @@ if __name__ == "__main__":
     )
     geometry = data["features"][0]["geometry"]
     print(process_field(geometry, "processing/data/synthetic_grid.tif"))
+    print(process_polygon(geometry))

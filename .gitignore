@@ -1,7 +1,39 @@
+
+# Python cache files
 __pycache__/
 *.pyc
+*.pyo
 .ipynb_checkpoints/
+
+# Virtual environments and environment variables
 .venv/
+venv/
 .env
-*.log
+
+# IDE configuration and logs
 .vscode/
+*.log
+
+# Generated LSTM datasets
+/lstm/wofost_sequences.pt
+/lstm/satellite_sequences.pt
+/lstm/satellite_sequences_metadata.csv
+/lstm/growth_sequences.pt
+
+# Trained LSTM checkpoint
+/lstm/outputs/growth_lstm_best.pt
+
+# Raw satellite archive
+/vhr_yieldnet_weekly-20261103T161614Z-1-001.zip
+
+# Generated WOFOST production-mode outputs
+/wofost/outputs/production_potential_daily.csv
+/wofost/outputs/production_water_limited_daily.csv
+/wofost/outputs/production_potential_diagnostic.csv
+/wofost/outputs/production_water_limited_diagnostic.csv
+# Original SoilGrids raster inputs
+/clay_0_5cm.tif
+/sand_0_5cm.tif
+
+# Local source code review reference
+/gee_ingestion_review.txt

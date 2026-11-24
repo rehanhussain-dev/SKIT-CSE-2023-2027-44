@@ -1,22 +1,27 @@
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
-.venv/
-.env
-*.log
-# Byte-compiled / cache
+
+# Python bytecode and cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+.ipynb_checkpoints/
+
+# Virtual environments
 env/
 venv/
 .venv/
+
+# Temporary files and logs
 temp/
+*.log
+/temp.md
+
+# Local project documents
 form1 and form2.docx
 form1 and form2.md
-# Large Datasets & Spatial Rasters 
+
+# Large datasets and spatial rasters
 data/
 *.tif
 *.tiff
@@ -29,26 +34,43 @@ data/
 *.dbf
 *.prj
 
-# PyTorch Weights & Checkpoints
+# PyTorch weights and generated tensors
 *.pt
 *.pth
 *.onnx
 *.pkl
 
-# Databases & Local Configurations
+# Databases and local configurations
 *.sqlite3
 .env
 local_settings.py
 
-# IDE / Operating System
+# Credentials and authentication
+token.json
+credentials.json
+
+# IDE and operating system
 .DS_Store
 .idea/
 .vscode/
-token.json
-credentials.json
-temp/
+
+# Existing SRGAN exclusions
 srgan/instructions.md
 srgan/documentation.md
 srgan/images
 srgan.zip
-/temp.md
+
+# Generated LSTM metadata
+/lstm/satellite_sequences_metadata.csv
+
+# Raw satellite archive
+/vhr_yieldnet_weekly-20261103T161614Z-1-001.zip
+
+# Generated WOFOST production-mode outputs
+/wofost/outputs/production_potential_daily.csv
+/wofost/outputs/production_water_limited_daily.csv
+/wofost/outputs/production_potential_diagnostic.csv
+/wofost/outputs/production_water_limited_diagnostic.csv
+
+# Local source code review reference
+/gee_ingestion_review.txt
